@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sleek Weather Dashboard</title>
+    <style>
+        :root {
+            --bg-sunny: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            --bg-cloudy: linear-gradient(135deg, #0f172a 0%, #475569 100%);
+            --bg-rainy: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            
+            --panel-bg: rgba(255, 255, 255, 0.1);
+            --border-color: rgba(255, 255, 255, 0.15);
+            --text-main: #ffffff;
+            --text-muted: #cbd5e1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background: var(--bg-sunny);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+            transition: background 0.5s ease;
+        }
+
+        .weather-container {
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            width: 100%;
+            max-width: 460px;
+            padding: 36px;
+            border-radius: 28px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .search-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        #city-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
+            padding: 14px 20px;
+            border-radius: 14px;
+            color: var(--text-main);
+            font-size: 16px;
+            outline: none;
+        }
+
+        #city-input:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        #city-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        #search-btn {
+            background: #ffffff;
+            color: #1e3a8a;
+            border: none;
+            padding: 0 22px;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        #search-btn:hover {
+            transform: scale(1.02);
+        }
+
+        .city-name {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .date-string {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            text-transform: uppercase;
+        }
+
+        .weather-icon-wrapper {
+            font-size: 72px;
+            margin-bottom: 16px;
+        }
+
+        .temperature {
+            font-size: 76px;
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .degree-symbol {
+            font-size: 32px;
+            font-weight: 500;
+        }
+
+        .condition-text {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 32px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 24px;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 16px;
+            border-radius: 16px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 18px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="weather-container">
+        <div class="search-group">
+            <input type="text" id="city-input" placeholder="Type London, Tokyo, or Paris..." autocomplete="off">
+            <button id="search-btn">Search</button>
+        </div>
+
+        <div class="weather-display">
+            <h2 class="city-name" id="city-title">New York</h2>
+            <div class="date-string" id="date-label">Today</div>
+            
+            <div class="weather-icon-wrapper" id="weather-icon">☀️</div>
+            
+            <div class="temperature">
+                <span id="temp-value">28</span><span class="degree-symbol">°C</span>
+            </div>
+            
+            <div class="condition-text" id="condition-label">Clear Sky</div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <span class="metric-label">Humidity</span>
+                    <span class="metric-value" id="humidity-value">64%</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Wind Speed</span>
+                    <span class="metric-value" id="wind-value">12 km/h</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const cityInput = document.getElementById('city-input');
+        const searchBtn = document.getElementById('search-btn');
+        
+        const cityTitle = document.getElementById('city-title');
+        const dateLabel = document.getElementById('date-label');
+        const weatherIcon = document.getElementById('weather-icon');
+        const tempValue = document.getElementById('temp-value');
+        const conditionLabel = document.getElementById('condition-label');
+        const humidityValue = document.getElementById('humidity-value');
+        const windValue = document.getElementById('wind-value');
+
+        // Automatically set current calendar date
+        const options = { weekday: 'long', month: 'short', day: 'numeric' };
+        dateLabel.textContent = new Date().toLocaleDateString('en-US', options);
+
+        // Standard Listeners 
+        searchBtn.addEventListener('click', runSearch);
+        cityInput.addEventListener('keypress', (e) => { 
+            if (e.key === 'Enter') runSearch(); 
+        });
+
+        function runSearch() {
+            const rawInput = cityInput.value.trim();
+            if (!rawInput) return;
+
+            // Fix input case differences
+            const cityName = rawInput.charAt(0).toUpperCase() + rawInput.slice(1).toLowerCase();
+            
+            // Fetch mock items matrix map
+            const mockDatabase = {
+                'London': { name: 'London', temp: 16, condition: 'Light Rain', humidity: '88%', wind: '22 km/h', icon: '🌧️', theme: 'rainy' },
+                'Tokyo': { name: 'Tokyo', temp: 22, condition: 'Heavy Clouds', humidity: '72%', wind: '14 km/h', icon: '☁️', theme: 'cloudy' },
+                'Paris': { name: 'Paris', temp: 19, condition: 'Overcast Skies', humidity: '78%', wind: '9 km/h', icon: '☁️', theme: 'cloudy' },
+                'Mumbai': { name: 'Mumbai', temp: 31, condition: 'Thunderstorm', humidity: '90%', wind: '28 km/h', icon: '⛈️', theme: 'rainy' }
+            };
+
+            let data;
+            if (mockDatabase[cityName]) {
+                data = mockDatabase[cityName];
+            } else {
+                // Fallback simulation generator for random entries
+                data = { 
+                    name: cityName, 
+                    temp: Math.floor(15 + (cityName.length * 2) % 15), 
+                    condition: 'Sunny Skies', 
+                    humidity: '55%', 
+                    wind: '10 km/h', 
+                    icon: '☀️', 
+                    theme: 'sunny' 
+                };
+            }
+
+            // Securely assign data straight to layout components
+            cityTitle.textContent = data.name;
+            tempValue.textContent = data.temp;
+            conditionLabel.textContent = data.condition;
+            humidityValue.textContent = data.humidity;
+            windValue.textContent = data.wind;
+            weatherIcon.textContent = data.icon;
+
+            // Background dynamic theme shifts
+            if (data.theme === 'rainy') {
+                document.body.style.background = 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)';
+                searchBtn.style.color = '#1e1b4b';
+            } else if (data.theme === 'cloudy') {
+                document.body.style.background = 'linear-gradient(135deg, #0f172a 0%, #475569 100%)';
+                searchBtn.style.color = '#0f172a';
+            } else {
+                document.body.style.background = 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)';
+                searchBtn.style.color = '#1e3a8a';
+            }
+
+            cityInput.value = '';
+        }
+    </script>
+</body>
+</html>
