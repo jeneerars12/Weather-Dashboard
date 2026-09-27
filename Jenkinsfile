@@ -5,22 +5,21 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo 'Weather Dashboard source code checked out from GitHub.'
+                echo 'Weather Dashboard source code is available in the Jenkins workspace.'
             }
         }
 
         stage('Build') {
             steps {
-                echo 'Building Weather Dashboard application...'
+                bat 'if exist "Live Weather Forecast Application.html" (echo Weather Dashboard HTML file found.) else (exit /b 1)'
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Testing Weather Dashboard application...'
+                bat 'if exist "Live Weather Forecast Application.html" (echo Weather Dashboard test passed.) else (exit /b 1)'
             }
         }
-
     }
 
     post {
