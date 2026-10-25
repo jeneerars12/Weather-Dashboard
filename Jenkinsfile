@@ -8,32 +8,57 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
-                echo 'Weather Dashboard source code is available.'
+                git branch: 'master',
+                    url: 'https://github.com/jeneerars12/Weather-Dashboard.git'
             }
         }
 
         stage('Validate Files') {
             steps {
-                bat 'if exist "Live Weather Forecast Application.html" (echo HTML file found.) else (exit /b 1)'
-                bat 'if exist "Dockerfile" (echo Dockerfile found.) else (exit /b 1)'
+                bat '''
+                    @echo off
+                    if not exist "Dockerfile" (
+                        echo ERROR: Dockerfile not found!
+                        exit /b 1
+                    )
+                    if not exist "Jenkinsfile" (
+                        echo ERROR: Jenkinsfile not found!
+                        exit /b 1
+                    )
+                    if not exist "Live Weather Forecast Application.html" (
+                        echo ERROR: HTML application file not found!
+                        exit /b 1
+                    )
+                    echo All required files are present.
+                '''
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                bat '"%DOCKER_EXE%" build -t %DOCKER_IMAGE%:latest .'
+                bat '''
+                    @echo off
+                    "%DOCKER_EXE%" build -t %DOCKER_IMAGE%:latest .
+                    if errorlevel 1 exit /b 1
+                '''
             }
         }
 
         stage('Verify Docker Image') {
             steps {
-                bat '"%DOCKER_EXE%" image inspect %DOCKER_IMAGE%:latest'
+                bat '''
+                    @echo off
+                    "%DOCKER_EXE%" image inspect %DOCKER_IMAGE%:latest
+                    if errorlevel 1 exit /b 1
+                    echo Docker image verified successfully.
+                '''
             }
         }
 
-        stage('Push to Docker Hub') {
+        stage('Docker Login') {
             steps {
                 withCredentials([
                     usernamePassword(
@@ -44,26 +69,32 @@ pipeline {
                 ]) {
                     bat '''
                         @echo off
-                        "%DOCKER_EXE%" login -u "%DOCKERHUB_USER%" --password-stdin < nul
-                    '''
-                    bat '''
-                        @echo off
-                        echo %DOCKERHUB_TOKEN% | "%DOCKER_EXE%" login -u "%DOCKERHUB_USER%" --password-stdin
+                        echo %DOCKERHUB_TOKEN%| "%DOCKER_EXE%" login -u "%DOCKERHUB_USER%" --password-stdin
                         if errorlevel 1 exit /b 1
-                        "%DOCKER_EXE%" push %DOCKER_IMAGE%:latest
                     '''
                 }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                bat '''
+                    @echo off
+                    "%DOCKER_EXE%" push %DOCKER_IMAGE%:latest
+                    if errorlevel 1 exit /b 1
+                    echo Image pushed successfully to Docker Hub.
+                '''
             }
         }
     }
 
     post {
         success {
-            echo 'SUCCESS: Weather Dashboard image pushed to Docker Hub!'
+            echo 'SUCCESS: Weather Dashboard image built, verified, and pushed to Docker Hub!'
         }
 
         failure {
-            echo 'FAILED: Check Console Output for the error.'
+            echo 'FAILED: Check the Jenkins Console Output for the stage that failed.'
         }
 
         always {
