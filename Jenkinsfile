@@ -4,6 +4,7 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = 'jeneera/weather-dashboard'
+        DOCKER_EXE = 'C:\\Users\\jenee\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe'
     }
 
     stages {
@@ -22,26 +23,48 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                bat '"C:\\Users\\jenee\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" build -t %DOCKER_IMAGE%:latest .'
+                bat '"%DOCKER_EXE%" build -t %DOCKER_IMAGE%:latest .'
             }
         }
 
         stage('Verify Docker Image') {
             steps {
-                bat '"C:\\Users\\jenee\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" image inspect %DOCKER_IMAGE%:latest'
+                bat '"%DOCKER_EXE%" image inspect %DOCKER_IMAGE%:latest'
+            }
+        }
+
+        stage('Login to Docker Hub') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKERHUB_USER',
+                        passwordVariable: 'DOCKERHUB_TOKEN'
+                    )
+                ]) {
+                    bat '''
+                        @echo off
+                        "%DOCKER_EXE%" login -u "%DOCKERHUB_USER%" --password-stdin < nul
+                    '''
+                }
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-credentials',
-                    usernameVariable: 'DOCKERHUB_USER',
-                    passwordVariable: 'DOCKERHUB_TOKEN'
-                )]) {
-                    bat '"C:\\Users\\jenee\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" login -u %DOCKERHUB_USER% --password-stdin < nul'
-                    bat 'echo %DOCKERHUB_TOKEN% | "C:\\Users\\jenee\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" login -u %DOCKERHUB_USER% --password-stdin'
-                    bat '"C:\\Users\\jenee\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%:latest'
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKERHUB_USER',
+                        passwordVariable: 'DOCKERHUB_TOKEN'
+                    )
+                ]) {
+                    bat '''
+                        @echo off
+                        echo %DOCKERHUB_TOKEN% | "%DOCKER_EXE%" login -u "%DOCKERHUB_USER%" --password-stdin
+                        if errorlevel 1 exit /b 1
+                        "%DOCKER_EXE%" push %DOCKER_IMAGE%:latest
+                    '''
                 }
             }
         }
@@ -49,10 +72,15 @@ pipeline {
 
     post {
         success {
-            echo 'Weather Dashboard image pushed successfully to Docker Hub!'
+            echo 'SUCCESS: Weather Dashboard image pushed to Docker Hub!'
         }
+
         failure {
-            echo 'Pipeline failed. Check Console Output.'
+            echo 'FAILED: Check Console Output for the error.'
+        }
+
+        always {
+            echo 'Weather Dashboard CI pipeline finished.'
         }
     }
 }
