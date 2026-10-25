@@ -1,34 +1,40 @@
+
 pipeline {
     agent any
 
     stages {
-
         stage('Checkout') {
             steps {
-                echo 'Weather Dashboard source code is available in the Jenkins workspace.'
+                echo 'Weather Dashboard source code is available.'
             }
         }
 
-        stage('Build') {
+        stage('Validate Files') {
             steps {
-                bat 'if exist "Live Weather Forecast Application.html" (echo Weather Dashboard HTML file found.) else (exit /b 1)'
+                bat 'if exist "Live Weather Forecast Application.html" (echo HTML file found.) else (exit /b 1)'
+                bat 'if exist "Dockerfile" (echo Dockerfile found.) else (exit /b 1)'
             }
         }
 
-        stage('Test') {
+        stage('Build Docker Image') {
             steps {
-                bat 'if exist "Live Weather Forecast Application.html" (echo Weather Dashboard test passed.) else (exit /b 1)'
+                bat 'docker build -t weather-dashboard:latest .'
+            }
+        }
+
+        stage('Verify Docker Image') {
+            steps {
+                bat 'docker image inspect weather-dashboard:latest'
             }
         }
     }
 
     post {
         success {
-            echo 'Weather Dashboard CI pipeline completed successfully!'
+            echo 'Weather Dashboard Docker CI pipeline completed successfully!'
         }
-
         failure {
-            echo 'Weather Dashboard CI pipeline failed.'
+            echo 'Weather Dashboard CI pipeline failed. Check the console output.'
         }
     }
 }
