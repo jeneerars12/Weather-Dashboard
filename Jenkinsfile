@@ -76,32 +76,54 @@ pipeline {
             }
         }
 
-        stage('Deploy to AWS EC2') {
-            steps {
-                withCredentials([
-                    sshUserPrivateKey(
-                        credentialsId: 'ec2-ssh-key',
-                        keyFileVariable: 'SSH_KEY',
-                        usernameVariable: 'SSH_USER'
-                    )
-                ]) {
-                    bat '''
-                        @echo off
+  
+stage('Deploy to AWS EC2') {
+    steps {
+        withCredentials([
+            sshUserPrivateKey(
+                credentialsId: 'ec2-ssh-key',
+                keyFileVariable: 'SSH_KEY',
+                usernameVariable: 'SSH_USER'
+            )
+        ]) {
+            powershell '''
+                $ErrorActionPreference = "Stop"
 
-                        ssh -i "%SSH_KEY%" ^
-                            -o StrictHostKeyChecking=no ^
-                            -o ConnectTimeout=15 ^
-                            %SSH_USER%@%EC2_HOST% ^
-                            "sudo docker pull %DOCKER_IMAGE%:latest && (sudo docker rm -f weather-dashboard || true) && sudo docker run -d --name weather-dashboard --restart unless-stopped -p 80:80 %DOCKER_IMAGE%:latest"
+                $key = $env:SSH_KEY
+                $hostIp = $env:EC2_HOST
+                $user = $env:SSH_USER
 
-                        if errorlevel 1 exit /b 1
+                # Restrict the temporary private key to the Jenkins service account.
+                $account = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
-                        echo Deployment to AWS EC2 completed successfully.
-                    '''
+                & icacls.exe $key /inheritance:r
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Could not disable key-file permission inheritance."
                 }
-            }
+
+                & icacls.exe $key /grant:r "${account}:(R)"
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Could not grant the Jenkins account read access."
+                }
+
+                # Deploy the latest image to EC2.
+                & ssh.exe -i $key `
+                    -o StrictHostKeyChecking=yes `
+                    -o ConnectTimeout=15 `
+                    "$($user)@$($hostIp)" `
+                    "sudo docker pull jeneera/weather-dashboard:latest && (sudo docker rm -f weather-dashboard || true) && sudo docker run -d --name weather-dashboard --restart unless-stopped -p 80:80 jeneera/weather-dashboard:latest"
+
+                if ($LASTEXITCODE -ne 0) {
+                    throw "SSH deployment failed. Check the SSH key, host key, and EC2 access."
+                }
+
+                Write-Host "Deployment to AWS EC2 completed successfully."
+            '''
         }
     }
+}
+
+   
 
     post {
         success {
