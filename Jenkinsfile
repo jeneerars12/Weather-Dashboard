@@ -5,6 +5,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = 'jeneera/weather-dashboard'
         DOCKER_EXE = 'C:\\Users\\jenee\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe'
+        EC2_HOST = '52.200.215.26'
     }
 
     stages {
@@ -20,18 +21,9 @@ pipeline {
             steps {
                 bat '''
                     @echo off
-                    if not exist "Dockerfile" (
-                        echo ERROR: Dockerfile not found!
-                        exit /b 1
-                    )
-                    if not exist "Jenkinsfile" (
-                        echo ERROR: Jenkinsfile not found!
-                        exit /b 1
-                    )
-                    if not exist "Live Weather Forecast Application.html" (
-                        echo ERROR: HTML application file not found!
-                        exit /b 1
-                    )
+                    if not exist "Dockerfile" exit /b 1
+                    if not exist "Jenkinsfile" exit /b 1
+                    if not exist "Live Weather Forecast Application.html" exit /b 1
                     echo All required files are present.
                 '''
             }
@@ -58,7 +50,7 @@ pipeline {
             }
         }
 
-        stage('Docker Login') {
+        stage('Docker Login and Push') {
             steps {
                 withCredentials([
                     usernamePassword(
@@ -71,34 +63,45 @@ pipeline {
                         @echo off
                         echo %DOCKERHUB_TOKEN%| "%DOCKER_EXE%" login -u "%DOCKERHUB_USER%" --password-stdin
                         if errorlevel 1 exit /b 1
+                        "%DOCKER_EXE%" push %DOCKER_IMAGE%:latest
+                        if errorlevel 1 exit /b 1
+                        echo Docker image pushed successfully.
                     '''
                 }
             }
         }
 
-        stage('Push to Docker Hub') {
+        stage('Deploy to AWS EC2') {
             steps {
-                bat '''
-                    @echo off
-                    "%DOCKER_EXE%" push %DOCKER_IMAGE%:latest
-                    if errorlevel 1 exit /b 1
-                    echo Image pushed successfully to Docker Hub.
-                '''
+                withCredentials([
+                    sshUserPrivateKey(
+                        credentialsId: 'ec2-ssh-key',
+                        keyFileVariable: 'SSH_KEY',
+                        usernameVariable: 'SSH_USER'
+                    )
+                ]) {
+                    bat '''
+                        @echo off
+                        ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no -o ConnectTimeout=15 %SSH_USER%@%EC2_HOST% "sudo docker pull jeneera/weather-dashboard:latest && (sudo docker rm -f weather-dashboard || true) && sudo docker run -d --name weather-dashboard --restart unless-stopped -p 80:80 jeneera/weather-dashboard:latest"
+                        if errorlevel 1 exit /b 1
+                        echo Deployment to AWS EC2 completed.
+                    '''
+                }
             }
         }
     }
 
     post {
         success {
-            echo 'SUCCESS: Weather Dashboard image built, verified, and pushed to Docker Hub!'
+            echo 'SUCCESS: Weather Dashboard built, pushed, and deployed to AWS EC2!'
         }
 
         failure {
-            echo 'FAILED: Check the Jenkins Console Output for the stage that failed.'
+            echo 'FAILED: Check the Jenkins Console Output for the exact error.'
         }
 
         always {
-            echo 'Weather Dashboard CI pipeline finished.'
+            echo 'Weather Dashboard CI/CD pipeline finished.'
         }
     }
 }
