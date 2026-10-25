@@ -5,6 +5,8 @@ pipeline {
     environment {
         DOCKER_IMAGE = 'jeneera/weather-dashboard'
         DOCKER_EXE = 'C:\\Users\\jenee\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe'
+
+        // Replace with your current EC2 public IPv4 address
         EC2_HOST = '52.200.215.26'
     }
 
@@ -35,6 +37,7 @@ pipeline {
                     @echo off
                     "%DOCKER_EXE%" build -t %DOCKER_IMAGE%:latest .
                     if errorlevel 1 exit /b 1
+                    echo Docker image built successfully.
                 '''
             }
         }
@@ -63,8 +66,10 @@ pipeline {
                         @echo off
                         echo %DOCKERHUB_TOKEN%| "%DOCKER_EXE%" login -u "%DOCKERHUB_USER%" --password-stdin
                         if errorlevel 1 exit /b 1
+
                         "%DOCKER_EXE%" push %DOCKER_IMAGE%:latest
                         if errorlevel 1 exit /b 1
+
                         echo Docker image pushed successfully.
                     '''
                 }
@@ -75,16 +80,23 @@ pipeline {
             steps {
                 withCredentials([
                     sshUserPrivateKey(
-                        credentialsId: '6969592c-11cd-40a6-90d9-8c950e4ab623',
+                        credentialsId: 'ec2-ssh-key',
                         keyFileVariable: 'SSH_KEY',
                         usernameVariable: 'SSH_USER'
                     )
                 ]) {
                     bat '''
                         @echo off
-                        ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no -o ConnectTimeout=15 %SSH_USER%@%EC2_HOST% "sudo docker pull jeneera/weather-dashboard:latest && (sudo docker rm -f weather-dashboard || true) && sudo docker run -d --name weather-dashboard --restart unless-stopped -p 80:80 jeneera/weather-dashboard:latest"
+
+                        ssh -i "%SSH_KEY%" ^
+                            -o StrictHostKeyChecking=no ^
+                            -o ConnectTimeout=15 ^
+                            %SSH_USER%@%EC2_HOST% ^
+                            "sudo docker pull %DOCKER_IMAGE%:latest && (sudo docker rm -f weather-dashboard || true) && sudo docker run -d --name weather-dashboard --restart unless-stopped -p 80:80 %DOCKER_IMAGE%:latest"
+
                         if errorlevel 1 exit /b 1
-                        echo Deployment to AWS EC2 completed.
+
+                        echo Deployment to AWS EC2 completed successfully.
                     '''
                 }
             }
@@ -97,7 +109,7 @@ pipeline {
         }
 
         failure {
-            echo 'FAILED: Check the Jenkins Console Output for the exact error.'
+            echo 'FAILED: Check the Console Output for the exact error.'
         }
 
         always {
@@ -105,3 +117,4 @@ pipeline {
         }
     }
 }
+
