@@ -18,13 +18,13 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                bat 'docker build -t weather-dashboard:latest .'
+                bat '"C:\\Users\\jenee\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" build -t weather-dashboard:latest .'
             }
         }
 
         stage('Verify Docker Image') {
             steps {
-                bat 'docker image inspect weather-dashboard:latest'
+                bat '"C:\\Users\\jenee\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" image inspect weather-dashboard:latest'
             }
         }
     }
@@ -34,7 +34,7 @@ pipeline {
             echo 'Weather Dashboard Docker CI pipeline completed successfully!'
         }
         failure {
-            echo 'Weather Dashboard CI pipeline failed. Check the console output.'
+            echo 'Weather Dashboard Docker pipeline failed. Check the Console Output.'
         }
     }
 }
